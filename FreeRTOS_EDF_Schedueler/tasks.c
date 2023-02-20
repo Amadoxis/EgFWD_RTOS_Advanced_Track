@@ -3153,8 +3153,8 @@ BaseType_t xTaskIncrementTick( void )
 										listREMOVE_ITEM( &( xIdleTaskHandle->xStateListItem ) );
 										listSET_LIST_ITEM_VALUE( &( ( xIdleTaskHandle )->xStateListItem ), (xIdleTaskHandle)->xTaskPeriod + xTickCount); /*increment idle task deadline*/
 										listSET_LIST_ITEM_VALUE( &( ( pxTCB )->xStateListItem ), ( pxTCB)->xTaskPeriod + xTickCount);
-										#endif
 										prvAddTaskToReadyList( xIdleTaskHandle );
+										#endif
                     prvAddTaskToReadyList( pxTCB );
 
                     /* A task being unblocked cannot cause an immediate
