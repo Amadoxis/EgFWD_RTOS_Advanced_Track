@@ -58,6 +58,7 @@
 /* Scheduler includes. */
 #include "FreeRTOS.h"
 #include "task.h"
+#include "queue.h"
 #include "lpc21xx.h"
 
 /* Peripheral includes. */
@@ -78,11 +79,9 @@
 #define Uart_Receiver_Period (portTickType)20
 #define Load_1_Simulation_Period (portTickType)10
 #define Load_2_Simulation_Period (portTickType)100
-typedef struct 
-{
-    char ucMessageID;
-    char ucData[ 20 ];
-}SMessage_t;
+#define MESSAGE_SIZE 50
+#define Load_1_Calibration 37300
+#define Load_2_Calibration 89552
 
 TaskHandle_t Button_1_Monitor_Handle = NULL;
 TaskHandle_t Button_2_Monitor_Handle = NULL;
@@ -91,9 +90,8 @@ TaskHandle_t Uart_Receiver_Handle = NULL;
 TaskHandle_t Load_1_Simulation_Handle = NULL;
 TaskHandle_t Load_2_Simulation_Handle = NULL;
 
-pinState_t buttonState = PIN_IS_LOW;
-
 static QueueHandle_t xQueue = NULL;
+
 /*
  * Configure the processor for use with the Keil demo board.  This is very
  * minimal as most of the setup is managed by the settings in the project
@@ -105,82 +103,149 @@ static void prvSetupHardware(void);
 /* Task to be created. */
 void Button_1_Monitor(void *pvParameters)
 {
-    portTickType xLastWakeTime;
+
+    int8_t xBuffer1[MESSAGE_SIZE] = "Falling Edge detected on Button 1";
+    int8_t xBuffer2[MESSAGE_SIZE] = "Rising Edge detected on Button 1";
+    pinState_t PinState;
+    pinState_t exPinState = PIN_IS_LOW;
+    portTickType xLastWakeTime = xTaskGetTickCount();
     const TickType_t xFrequency = Button_1_Monitor_Period;
     for (;;)
     {
-
         vTaskDelayUntil(&xLastWakeTime, xFrequency);
+        GPIO_write(PORT_0, PIN4, PIN_IS_LOW);
+        GPIO_write(PORT_1, PIN1, PIN_IS_HIGH);
+        PinState = GPIO_read(PORT_0, PIN0);
+        if (PinState != exPinState)
+        {
+            if (exPinState == PIN_IS_LOW && PinState == PIN_IS_HIGH)
+            {
+                xQueueSend(xQueue, xBuffer2, 0);
+            }
+            else
+            {
+                xQueueSend(xQueue, xBuffer1, 0);
+            }
+        }
+        exPinState = PinState;
+        GPIO_write(PORT_1, PIN1, PIN_IS_LOW);
     }
 }
 
 /* Task to be created. */
 void Button_2_Monitor(void *pvParameters)
 {
-    portTickType xLastWakeTime;
+
+    int8_t xBuffer1[MESSAGE_SIZE] = "Falling Edge detected on Button 1";
+    int8_t xBuffer2[MESSAGE_SIZE] = "Rising Edge detected on Button 1";
+    pinState_t PinState;
+    pinState_t exPinState = PIN_IS_LOW;
+    portTickType xLastWakeTime = xTaskGetTickCount();
     const TickType_t xFrequency = Button_2_Monitor_Period;
     for (;;)
     {
-
         vTaskDelayUntil(&xLastWakeTime, xFrequency);
+        GPIO_write(PORT_0, PIN4, PIN_IS_LOW);
+        GPIO_write(PORT_1, PIN2, PIN_IS_HIGH);
+        PinState = GPIO_read(PORT_0, PIN1);
+        if (PinState != exPinState)
+        {
+            if (exPinState == PIN_IS_LOW && PinState == PIN_IS_HIGH)
+            {
+                xQueueSend(xQueue, xBuffer2, 0);
+            }
+            else
+            {
+                xQueueSend(xQueue, xBuffer1, 0);
+            }
+        }
+        exPinState = PinState;
+        GPIO_write(PORT_1, PIN2, PIN_IS_LOW);
     }
 }
 
 /* Task to be created. */
 void Periodic_Transmitter(void *pvParameters)
 {
-    portTickType xLastWakeTime;
+    int8_t xBuffer[MESSAGE_SIZE] = "I'm a periodic string. I'm Cool!";
+    portTickType xLastWakeTime = xTaskGetTickCount();
     const TickType_t xFrequency = Periodic_Transmitter_Period;
     for (;;)
     {
-        if (buttonState == PIN_IS_HIGH)
-        {
-            GPIO_write(PORT_0, PIN2, PIN_IS_HIGH);
-        }
-        else
-        {
-            GPIO_write(PORT_0, PIN2, PIN_IS_LOW);
-        }
         vTaskDelayUntil(&xLastWakeTime, xFrequency);
+        GPIO_write(PORT_0, PIN4, PIN_IS_LOW);
+        GPIO_write(PORT_1, PIN3, PIN_IS_HIGH);
+
+        xQueueSend(xQueue, xBuffer, 0);
+        GPIO_write(PORT_1, PIN3, PIN_IS_LOW);
     }
 }
 
 /* Task to be created. */
 void Uart_Receiver(void *pvParameters)
 {
-    portTickType xLastWakeTime;
+    int8_t xRXBuffer[MESSAGE_SIZE];
+    int8_t *pxRXBuffer = (int8_t *)&xRXBuffer;
+    portTickType xLastWakeTime = xTaskGetTickCount();
     const TickType_t xFrequency = Uart_Receiver_Period;
     for (;;)
     {
         vTaskDelayUntil(&xLastWakeTime, xFrequency);
+        GPIO_write(PORT_0, PIN4, PIN_IS_LOW);
+        GPIO_write(PORT_1, PIN4, PIN_IS_HIGH);
+        if (uxQueueMessagesWaiting(xQueue) != 0)
+        {
+            if (xQueueReceive(xQueue, pxRXBuffer, 0) == pdPASS)
+            {
+                vSerialPutString(xRXBuffer, MESSAGE_SIZE);
+            }
+        }
+        GPIO_write(PORT_1, PIN4, PIN_IS_LOW);
     }
 }
 
 /* Task to be created. */
 void Load_1_Simulation(void *pvParameters)
 {
-    portTickType xLastWakeTime;
+    portTickType xLastWakeTime = xTaskGetTickCount();
     const TickType_t xFrequency = Load_1_Simulation_Period;
+    uint32_t u32_i = 0;
     for (;;)
     {
         vTaskDelayUntil(&xLastWakeTime, xFrequency);
+        GPIO_write(PORT_0, PIN4, PIN_IS_LOW);
+        GPIO_write(PORT_1, PIN5, PIN_IS_HIGH);
+        for (u32_i = 0; u32_i < Load_1_Calibration; u32_i++)
+            ;
+        GPIO_write(PORT_1, PIN5, PIN_IS_LOW);
     }
 }
 
 /* Task to be created. */
 void Load_2_Simulation(void *pvParameters)
 {
-    portTickType xLastWakeTime;
+    portTickType xLastWakeTime = xTaskGetTickCount();
     const TickType_t xFrequency = Load_2_Simulation_Period;
+    uint32_t u32_i = 0;
     for (;;)
     {
         vTaskDelayUntil(&xLastWakeTime, xFrequency);
+        GPIO_write(PORT_0, PIN4, PIN_IS_LOW);
+        GPIO_write(PORT_1, PIN6, PIN_IS_HIGH);
+        for (u32_i = 0; u32_i < Load_2_Calibration; u32_i++)
+            ;
+        GPIO_write(PORT_1, PIN6, PIN_IS_LOW);
     }
 }
 
 void vApplicationIdleHook(void)
 {
-    GPIO_write(PORT_0, PIN5, PIN_IS_HIGH);
+    GPIO_write(PORT_0, PIN4, PIN_IS_HIGH);
+}
+void vApplicationTickHook(void)
+{
+    GPIO_write(PORT_0, PIN3, PIN_IS_HIGH);
+    GPIO_write(PORT_0, PIN3, PIN_IS_LOW);
 }
 /*
  * Application entry point:
@@ -190,7 +255,7 @@ int main(void)
 {
     /* Setup the hardware for use with the Keil demo board. */
     prvSetupHardware();
-	  xQueue = xQueueCreate( 10, sizeof( SMessage_t ) );
+    xQueue = xQueueCreate(20, (sizeof(char)) * MESSAGE_SIZE);
     /* Create Tasks here */
     /* Create the task, storing the handle. */
     xTaskCreatePeriodic(
@@ -200,7 +265,7 @@ int main(void)
         (void *)1,                /* Parameter passed into the task. */
         1,                        /* Priority at which the task is created. */
         &Button_1_Monitor_Handle, /* Used to pass out the created task's handle. */
-        50);
+        Button_1_Monitor_Period);
 
     xTaskCreatePeriodic(
         Button_2_Monitor,         /* Function that implements the task. */
@@ -209,7 +274,7 @@ int main(void)
         (void *)1,                /* Parameter passed into the task. */
         1,                        /* Priority at which the task is created. */
         &Button_2_Monitor_Handle, /* Used to pass out the created task's handle. */
-        50);
+        Button_2_Monitor_Period);
 
     xTaskCreatePeriodic(
         Periodic_Transmitter,         /* Function that implements the task. */
@@ -218,7 +283,7 @@ int main(void)
         (void *)1,                    /* Parameter passed into the task. */
         1,                            /* Priority at which the task is created. */
         &Periodic_Transmitter_Handle, /* Used to pass out the created task's handle. */
-        100);
+        Periodic_Transmitter_Period);
 
     xTaskCreatePeriodic(
         Uart_Receiver,         /* Function that implements the task. */
@@ -227,7 +292,7 @@ int main(void)
         (void *)1,             /* Parameter passed into the task. */
         1,                     /* Priority at which the task is created. */
         &Uart_Receiver_Handle, /* Used to pass out the created task's handle. */
-        20);
+        Uart_Receiver_Period);
 
     xTaskCreatePeriodic(
         Load_1_Simulation,         /* Function that implements the task. */
@@ -236,7 +301,7 @@ int main(void)
         (void *)1,                 /* Parameter passed into the task. */
         1,                         /* Priority at which the task is created. */
         &Load_1_Simulation_Handle, /* Used to pass out the created task's handle. */
-        10);
+        Load_1_Simulation_Period);
 
     xTaskCreatePeriodic(
         Load_2_Simulation,         /* Function that implements the task. */
@@ -245,7 +310,7 @@ int main(void)
         (void *)1,                 /* Parameter passed into the task. */
         1,                         /* Priority at which the task is created. */
         &Load_2_Simulation_Handle, /* Used to pass out the created task's handle. */
-        100);
+        Load_2_Simulation_Period);
 
     /* Now all the tasks have been started - start the scheduler.
 

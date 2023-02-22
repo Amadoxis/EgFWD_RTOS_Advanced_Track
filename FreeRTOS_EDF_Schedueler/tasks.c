@@ -4017,10 +4017,10 @@ static portTASK_FUNCTION( prvIdleTask, pvParameters )
 
 static void prvInitialiseTaskLists( void )
 {
-	#if ( configUSE_EDF_SCHEDULER == 1 )
-{
+#if ( configUSE_EDF_SCHEDULER == 1 )
+
 vListInitialise( &xReadyTasksListEDF );
-}
+
 #else
     UBaseType_t uxPriority;
 
@@ -4028,7 +4028,7 @@ vListInitialise( &xReadyTasksListEDF );
     {
         vListInitialise( &( pxReadyTasksLists[ uxPriority ] ) );
     }
-		#endif
+#endif
 
     vListInitialise( &xDelayedTaskList1 );
     vListInitialise( &xDelayedTaskList2 );

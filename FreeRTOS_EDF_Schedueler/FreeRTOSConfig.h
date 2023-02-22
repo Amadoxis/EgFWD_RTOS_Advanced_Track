@@ -43,7 +43,7 @@
 
 #define configUSE_PREEMPTION		1
 #define configUSE_IDLE_HOOK			1
-#define configUSE_TICK_HOOK			0
+#define configUSE_TICK_HOOK			1
 #define configCPU_CLOCK_HZ			( ( unsigned long ) 60000000 )	/* =12.0MHz xtal multiplied by 5 using the PLL. */
 #define configTICK_RATE_HZ			( ( TickType_t ) 1000 )
 #define configMAX_PRIORITIES		( 10 )
@@ -53,11 +53,11 @@
 #define configUSE_TRACE_FACILITY	0
 #define configUSE_16_BIT_TICKS		0
 #define configIDLE_SHOULD_YIELD		1
-
+//#define configSUPPORT_DYNAMIC_ALLOCATION 1
 #define configQUEUE_REGISTRY_SIZE 	0
 
 #define configUSE_EDF_SCHEDULER     1
-#define configMAX_PERIOD_FOR_IDLE   (TickType_t) 1100
+#define configMAX_PERIOD_FOR_IDLE   (TickType_t) 110
 /* Set the following definitions to 1 to include the API function, or zero
 to exclude the API function. */
 
